@@ -436,7 +436,7 @@ void mesh_app_init(wiced_bool_t is_provisioned)
 #endif
 
 #if defined(MESH_DFU_SUPPORTED)
-    wiced_bt_mesh_model_fw_update_server_init("");
+    wiced_bt_mesh_model_fw_update_server_init();
     wiced_bt_mesh_model_fw_distribution_server_init();
     wiced_bt_mesh_model_blob_transfer_server_init(WICED_BT_MESH_FW_TRANSFER_MODE_PUSH);
 #endif
@@ -1665,13 +1665,13 @@ extern wiced_transport_buffer_pool_t* host_trans_pool;
 
 #if defined(MESH_DFU_SUPPORTED)
 uint8_t fw_distribution_server_process_upload_start(wiced_bt_mesh_event_t* p_event, uint8_t* p_data, uint16_t data_len);
-uint8_t fw_distribution_server_process_nodes_add(wiced_bt_mesh_event_t* p_event, uint8_t* p_data, uint16_t data_len);
+void fw_distribution_server_process_nodes_add(wiced_bt_mesh_event_t* p_event, uint8_t* p_data, uint16_t data_len);
 uint8_t fw_distribution_server_process_distribution_start(wiced_bt_mesh_event_t* p_event, uint8_t* p_data, uint16_t data_len);
 void fw_distribution_server_blob_transfer_callback(uint16_t event, void* p_data);
 uint8_t fw_distribution_server_get_upload_phase(void);
 uint8_t mesh_fw_distribution_get_distribution_state(void);
 wiced_bool_t fw_distribution_server_get_upload_fw_id(mesh_dfu_fw_id_t *p_fw_id);
-void fw_update_client_send_status_complete_callback(wiced_bt_mesh_event_t *p_event);
+void fw_distribution_server_send_status_complete_callback(wiced_bt_mesh_event_t *p_event);
 
 /*
  * start distribution of the FW with FW_ID
@@ -1689,13 +1689,14 @@ wiced_bool_t embedded_provisioner_start_dfu(mesh_dfu_fw_id_t *p_fw_id)
     // fw_distribution_server_process_nodes_delete_all(NULL, NULL, 0);
 
     // add all devices in the list (for the future, we may check the fw_id)
-    for (i = EMBEDDED_PROV_NODE_ADDR_FIRST + 1; i < EMBEDDED_PROV_NODE_ADDR_LAST; i++)
+    for (i = EMBEDDED_PROV_NODE_ADDR_FIRST; i < EMBEDDED_PROV_NODE_ADDR_LAST; i++)
     {
         if (wiced_hal_read_nvram(i, sizeof(mesh_node_t), (uint8_t*)&node, &result) == sizeof(mesh_node_t))
         {
             buffer[0] = node.addr & 0xff;
             buffer[1] = (node.addr >> 8) & 0xff;
-            fw_distribution_server_process_nodes_add(NULL, buffer, 2);
+            buffer[2] = 0;
+            fw_distribution_server_process_nodes_add(NULL, buffer, 3);
             node_found = WICED_TRUE;
         }
     }
@@ -1707,8 +1708,8 @@ wiced_bool_t embedded_provisioner_start_dfu(mesh_dfu_fw_id_t *p_fw_id)
     UINT8_TO_STREAM(p, 0);
     UINT16_TO_STREAM(p, EMBEDDED_PROV_DISTR_NODE_TIMEOUT);
     UINT8_TO_STREAM(p, (WICED_BT_MESH_FW_TRANSFER_MODE_PUSH | (WICED_BT_MESH_FW_UPDATE_POLICY_VERIFY_AND_APPLY << 2)));
+    UINT16_TO_STREAM(p, 0);
     UINT16_TO_STREAM(p, 0xFFFF);    // group address is broadcast
-    mesh_dfu_fw_id_to_data(p_fw_id, &p);
 
     if (fw_distribution_server_process_distribution_start(NULL, buffer, (uint16_t)(p - buffer)) == WICED_BT_MESH_FW_DISTR_STATUS_SUCCESS)
     {

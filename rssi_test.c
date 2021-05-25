@@ -76,16 +76,16 @@
 
 #define RSSI_TEST_USE_LED_FOR_DEBUG             0
 
-#define RSSI_TEST_MASTER_STATE_IDLE             0
-#define RSSI_TEST_MASTER_STATE_WAIT_START_RSP   1
-#define RSSI_TEST_MASTER_STATE_RUNNING          2
-#define RSSI_TEST_MASTER_STATE_WAIT_RESULT      3
+#define RSSI_TEST_CENTRAL_STATE_IDLE            0
+#define RSSI_TEST_CENTRAL_STATE_WAIT_START_RSP  1
+#define RSSI_TEST_CENTRAL_STATE_RUNNING         2
+#define RSSI_TEST_CENTRAL_STATE_WAIT_RESULT     3
 
-#define RSSI_TEST_MASTER_EVENT_START            0
-#define RSSI_TEST_MASTER_EVENT_START_RSP        1
-#define RSSI_TEST_MASTER_EVENT_TX_FAILED        2
-#define RSSI_TEST_MASTER_EVENT_RESULT           3
-#define RSSI_TEST_MASTER_EVENT_TIMEOUT          4
+#define RSSI_TEST_CENTRAL_EVENT_START           0
+#define RSSI_TEST_CENTRAL_EVENT_START_RSP       1
+#define RSSI_TEST_CENTRAL_EVENT_TX_FAILED       2
+#define RSSI_TEST_CENTRAL_EVENT_RESULT          3
+#define RSSI_TEST_CENTRAL_EVENT_TIMEOUT         4
 
 /******************************************************
  *          Structures
@@ -116,16 +116,16 @@ rssi_test_state_t rssi_test_state;
  ******************************************************/
 
 static void rssi_test_timer_cb(TIMER_PARAM_TYPE arg);
-static void rssi_test_master_set_state(uint8_t state);
-static void rssi_test_master_execute(uint8_t event);
-static void rssi_test_master_idle_state(uint8_t event);
-static void rssi_test_master_wait_start_rsp_state(uint8_t event);
-static void rssi_test_master_running_state(uint8_t event);
-static void rssi_test_master_wait_result_state(uint8_t event);
+static void rssi_test_central_set_state(uint8_t state);
+static void rssi_test_central_execute(uint8_t event);
+static void rssi_test_central_idle_state(uint8_t event);
+static void rssi_test_central_wait_start_rsp_state(uint8_t event);
+static void rssi_test_central_running_state(uint8_t event);
+static void rssi_test_central_wait_result_state(uint8_t event);
 static wiced_bool_t rssi_test_send_tx_start(uint16_t addr);
 static wiced_bool_t rssi_test_send_rx_values_get(uint16_t addr);
 static void rssi_test_start_timer_cb(TIMER_PARAM_TYPE arg);
-static void rssi_test_master_send_complete_callback(wiced_bt_mesh_event_t* p_event);
+static void rssi_test_central_send_complete_callback(wiced_bt_mesh_event_t* p_event);
 static void rssi_test_timer_cb(TIMER_PARAM_TYPE arg);
 static void rssi_test_send_data(void);
 
@@ -153,10 +153,10 @@ void rssi_test_start(uint16_t dst, uint16_t count, uint8_t interval, uint16_t st
     p_provisioner_state->rssi_test.interval = ((interval == 0) ? RSSI_TEST_TX_INTERVAL : interval) * RSSI_TEST_INTERVAL_MULTIPLIER;
 
     // if not idle, need to wait for the previous test to complete. Otherwise just a guard timer in case provisioner finds and provisions another device.
-    if (p_provisioner_state->rssi_test.state != RSSI_TEST_MASTER_STATE_IDLE)
+    if (p_provisioner_state->rssi_test.state != RSSI_TEST_CENTRAL_STATE_IDLE)
     {
         wiced_start_timer(&rssi_test_state.timer, start_delay + (RSSI_TEST_TX_START_DELAY * 2) + (p_provisioner_state->rssi_test.count * p_provisioner_state->rssi_test.interval));
-        rssi_test_master_set_state(RSSI_TEST_MASTER_STATE_IDLE);
+        rssi_test_central_set_state(RSSI_TEST_CENTRAL_STATE_IDLE);
     }
     else
     {
@@ -164,41 +164,41 @@ void rssi_test_start(uint16_t dst, uint16_t count, uint8_t interval, uint16_t st
     }
 }
 
-void rssi_test_master_set_state(uint8_t state)
+void rssi_test_central_set_state(uint8_t state)
 {
-    WICED_BT_TRACE("RSSI Test Master state:%d\n", state);
+    WICED_BT_TRACE("RSSI Test Central state:%d\n", state);
     p_provisioner_state->rssi_test.state = state;
 }
 
-void rssi_test_master_execute(uint8_t event)
+void rssi_test_central_execute(uint8_t event)
 {
     if (p_provisioner_state == NULL)
         return;
 
     switch (p_provisioner_state->rssi_test.state)
     {
-    case RSSI_TEST_MASTER_STATE_IDLE:
-        rssi_test_master_idle_state(event);
+    case RSSI_TEST_CENTRAL_STATE_IDLE:
+        rssi_test_central_idle_state(event);
         break;
 
-    case RSSI_TEST_MASTER_STATE_WAIT_START_RSP:
-        rssi_test_master_wait_start_rsp_state(event);
+    case RSSI_TEST_CENTRAL_STATE_WAIT_START_RSP:
+        rssi_test_central_wait_start_rsp_state(event);
         break;
 
-    case RSSI_TEST_MASTER_STATE_RUNNING:
-        rssi_test_master_running_state(event);
+    case RSSI_TEST_CENTRAL_STATE_RUNNING:
+        rssi_test_central_running_state(event);
         break;
 
-    case RSSI_TEST_MASTER_STATE_WAIT_RESULT:
-        rssi_test_master_wait_result_state(event);
+    case RSSI_TEST_CENTRAL_STATE_WAIT_RESULT:
+        rssi_test_central_wait_result_state(event);
         break;
     }
 }
 
 /*
- * RSSI Test Master is in Idle state waiting for Pre Start timeout
+ * RSSI Test Central is in Idle state waiting for Pre Start timeout
  */
-void rssi_test_master_idle_state(uint8_t event)
+void rssi_test_central_idle_state(uint8_t event)
 {
     wiced_result_t result;
     mesh_node_t node;
@@ -207,16 +207,16 @@ void rssi_test_master_idle_state(uint8_t event)
 
     switch (event)
     {
-    case RSSI_TEST_MASTER_EVENT_TIMEOUT:
+    case RSSI_TEST_CENTRAL_EVENT_TIMEOUT:
         if (wiced_hal_read_nvram(EMBEDDED_PROV_NODE_ADDR_FIRST + p_provisioner_state->rssi_test.cur_tx_start_node, sizeof(node), (uint8_t*)&node, &result) != sizeof(node))
         {
             WICED_BT_TRACE("rssi test_start done cur_node:%d\n", p_provisioner_state->rssi_test.cur_tx_start_node);
             return;
         }
         p_provisioner_state->rssi_test.cur_tx_start_node_addr = node.addr;
-        rssi_test_master_set_state(RSSI_TEST_MASTER_STATE_WAIT_START_RSP);
+        rssi_test_central_set_state(RSSI_TEST_CENTRAL_STATE_WAIT_START_RSP);
         if (!rssi_test_send_tx_start(node.addr))
-            rssi_test_master_set_state(RSSI_TEST_MASTER_STATE_IDLE);
+            rssi_test_central_set_state(RSSI_TEST_CENTRAL_STATE_IDLE);
         break;
 
     default:
@@ -226,25 +226,25 @@ void rssi_test_master_idle_state(uint8_t event)
 }
 
 /*
- * RSSI Test Master is in Wait Start Rsp state waiting for Start Rsp from rssi_test.cur_tx_start_node
+ * RSSI Test Central is in Wait Start Rsp state waiting for Start Rsp from rssi_test.cur_tx_start_node
  */
-void rssi_test_master_wait_start_rsp_state(uint8_t event)
+void rssi_test_central_wait_start_rsp_state(uint8_t event)
 {
     WICED_BT_TRACE("rssi test wait start rsp state:event:%d cur_node:%d\n", event, p_provisioner_state->rssi_test.cur_tx_start_node);
 
     switch (event)
     {
-    case RSSI_TEST_MASTER_EVENT_TX_FAILED:
+    case RSSI_TEST_CENTRAL_EVENT_TX_FAILED:
         p_provisioner_state->rssi_test.cur_tx_start_node++;
         wiced_start_timer(&rssi_test_state.timer, RSSI_TEST_TX_RESTART_DELAY);
-        rssi_test_master_set_state(RSSI_TEST_MASTER_STATE_IDLE);
+        rssi_test_central_set_state(RSSI_TEST_CENTRAL_STATE_IDLE);
         break;
 
-    case RSSI_TEST_MASTER_EVENT_START_RSP:
+    case RSSI_TEST_CENTRAL_EVENT_START_RSP:
         // Start response is received, stay in the RUNNING state until all data is received.
         wiced_start_timer(&rssi_test_state.timer, (RSSI_TEST_TX_START_DELAY * 2) + (p_provisioner_state->rssi_test.count * p_provisioner_state->rssi_test.interval));
         p_provisioner_state->rssi_test.cur_rx_values_get_node = 0;
-        rssi_test_master_set_state(RSSI_TEST_MASTER_STATE_RUNNING);
+        rssi_test_central_set_state(RSSI_TEST_CENTRAL_STATE_RUNNING);
         break;
 
     default:
@@ -254,9 +254,9 @@ void rssi_test_master_wait_start_rsp_state(uint8_t event)
 }
 
 /*
- * RSSI Test Master is in Running state waiting the timeout which would indicate that the test on rssi_test.cur_tx_start_node has been completed
+ * RSSI Test Central is in Running state waiting the timeout which would indicate that the test on rssi_test.cur_tx_start_node has been completed
  */
-void rssi_test_master_running_state(uint8_t event)
+void rssi_test_central_running_state(uint8_t event)
 {
     wiced_result_t result;
     mesh_node_t node;
@@ -268,7 +268,7 @@ void rssi_test_master_running_state(uint8_t event)
 
     switch (event)
     {
-    case RSSI_TEST_MASTER_EVENT_TIMEOUT:
+    case RSSI_TEST_CENTRAL_EVENT_TIMEOUT:
         if (p_provisioner_state->rssi_test.cur_rx_values_get_node == p_provisioner_state->rssi_test.cur_tx_start_node)
             p_provisioner_state->rssi_test.cur_rx_values_get_node++;
 
@@ -276,12 +276,12 @@ void rssi_test_master_running_state(uint8_t event)
         {
             WICED_BT_TRACE("rssi last report received get_node:%d\n", p_provisioner_state->rssi_test.cur_rx_values_get_node);
             p_provisioner_state->rssi_test.cur_tx_start_node++;
-            rssi_test_master_set_state(RSSI_TEST_MASTER_STATE_IDLE);
-            rssi_test_master_execute(RSSI_TEST_MASTER_EVENT_TIMEOUT);
+            rssi_test_central_set_state(RSSI_TEST_CENTRAL_STATE_IDLE);
+            rssi_test_central_execute(RSSI_TEST_CENTRAL_EVENT_TIMEOUT);
             return;
         }
         if (rssi_test_send_rx_values_get(node.addr))
-            rssi_test_master_set_state(RSSI_TEST_MASTER_STATE_WAIT_RESULT);
+            rssi_test_central_set_state(RSSI_TEST_CENTRAL_STATE_WAIT_RESULT);
         break;
 
     default:
@@ -291,25 +291,25 @@ void rssi_test_master_running_state(uint8_t event)
 }
 
 /*
- * RSSI Test Master is in Wait Responce Rx state waiting for Respond Rx from rssi_test.cur_rx_values_get_node
+ * RSSI Test Central is in Wait Responce Rx state waiting for Respond Rx from rssi_test.cur_rx_values_get_node
  */
-void rssi_test_master_wait_result_state(uint8_t event)
+void rssi_test_central_wait_result_state(uint8_t event)
 {
-    WICED_BT_TRACE("rssi test_master wait report:event:%d cur_node:%d\n", event, p_provisioner_state->rssi_test.cur_rx_values_get_node);
+    WICED_BT_TRACE("rssi test_central wait report:event:%d cur_node:%d\n", event, p_provisioner_state->rssi_test.cur_rx_values_get_node);
 
     switch (event)
     {
-    case RSSI_TEST_MASTER_EVENT_TX_FAILED:
+    case RSSI_TEST_CENTRAL_EVENT_TX_FAILED:
         p_provisioner_state->rssi_test.cur_rx_values_get_node++;
-        rssi_test_master_set_state(RSSI_TEST_MASTER_STATE_RUNNING);
-        rssi_test_master_execute(RSSI_TEST_MASTER_EVENT_TIMEOUT);
+        rssi_test_central_set_state(RSSI_TEST_CENTRAL_STATE_RUNNING);
+        rssi_test_central_execute(RSSI_TEST_CENTRAL_EVENT_TIMEOUT);
         break;
 
-    case RSSI_TEST_MASTER_EVENT_RESULT:
+    case RSSI_TEST_CENTRAL_EVENT_RESULT:
         // ToDo Save result
         p_provisioner_state->rssi_test.cur_rx_values_get_node++;
-        rssi_test_master_set_state(RSSI_TEST_MASTER_STATE_RUNNING);
-        rssi_test_master_execute(RSSI_TEST_MASTER_EVENT_TIMEOUT);
+        rssi_test_central_set_state(RSSI_TEST_CENTRAL_STATE_RUNNING);
+        rssi_test_central_execute(RSSI_TEST_CENTRAL_EVENT_TIMEOUT);
         break;
 
     default:
@@ -323,7 +323,7 @@ void rssi_test_master_wait_result_state(uint8_t event)
  */
 void rssi_test_start_timer_cb(TIMER_PARAM_TYPE arg)
 {
-    rssi_test_master_execute(RSSI_TEST_MASTER_EVENT_TIMEOUT);
+    rssi_test_central_execute(RSSI_TEST_CENTRAL_EVENT_TIMEOUT);
 }
 
 /*
@@ -358,12 +358,12 @@ wiced_bool_t rssi_test_send_tx_start(uint16_t addr)
     if (addr == wiced_bt_mesh_core_get_local_addr())
     {
         mesh_vendor_rssi_test_process_tx_start(p_event, &buffer[1], (uint8_t)(p - buffer) - 1);
-        rssi_test_master_set_state(RSSI_TEST_MASTER_STATE_RUNNING);
+        rssi_test_central_set_state(RSSI_TEST_CENTRAL_STATE_RUNNING);
         return WICED_TRUE;
     }
 
     if (wiced_bt_mesh_models_utils_send(p_event, &p_provisioner_state->p_out_event,
-        WICED_TRUE, MESH_VENDOR_CYPRSESS_OPCODE_CONFIG, buffer, (uint16_t)(p - buffer), rssi_test_master_send_complete_callback) != WICED_BT_SUCCESS)
+        WICED_TRUE, MESH_VENDOR_CYPRSESS_OPCODE_CONFIG, buffer, (uint16_t)(p - buffer), rssi_test_central_send_complete_callback) != WICED_BT_SUCCESS)
     {
         WICED_BT_TRACE("rssi test_start: failed to send\n");
         wiced_bt_mesh_release_event(p_event);
@@ -411,7 +411,7 @@ void mesh_vendor_rssi_test_process_tx_start(wiced_bt_mesh_event_t* p_event, uint
 /*
  * transmit complete callback function. Kick off state machine if TX failed.
  */
-void rssi_test_master_send_complete_callback(wiced_bt_mesh_event_t* p_event)
+void rssi_test_central_send_complete_callback(wiced_bt_mesh_event_t* p_event)
 {
    WICED_BT_TRACE(TRACE_INFO, "rssi send complete: dst:%04x status:%d\n", p_event->dst, p_event->status.tx_flag);
     if (p_event->status.tx_flag == TX_STATUS_COMPLETED)
@@ -423,7 +423,7 @@ void rssi_test_master_send_complete_callback(wiced_bt_mesh_event_t* p_event)
         if (p_event->status.tx_flag == TX_STATUS_FAILED)
         {
             WICED_BT_TRACE("rssi test send complete: failed\n");
-            rssi_test_master_execute(RSSI_TEST_MASTER_EVENT_TX_FAILED);
+            rssi_test_central_execute(RSSI_TEST_CENTRAL_EVENT_TX_FAILED);
         }
     }
 }
@@ -440,7 +440,7 @@ void mesh_vendor_rssi_test_process_tx_start_status(wiced_bt_mesh_event_t* p_even
 
     wiced_bt_mesh_release_event(p_event);
 
-    rssi_test_master_execute(RSSI_TEST_MASTER_EVENT_START_RSP);
+    rssi_test_central_execute(RSSI_TEST_CENTRAL_EVENT_START_RSP);
 }
 
 /*
@@ -508,13 +508,13 @@ wiced_bool_t rssi_test_send_rx_values_get(uint16_t addr)
     // If request to send to this device, process prepare and send report RX status
     if (addr == wiced_bt_mesh_core_get_local_addr())
     {
-        rssi_test_master_set_state(RSSI_TEST_MASTER_STATE_WAIT_RESULT);
+        rssi_test_central_set_state(RSSI_TEST_CENTRAL_STATE_WAIT_RESULT);
         mesh_vendor_rssi_test_process_rx_values_get(p_event, &buffer[1], (uint8_t)(p - buffer) - 1);
         return WICED_TRUE;
     }
 
     if (wiced_bt_mesh_models_utils_send(p_event, &p_provisioner_state->p_out_event,
-        WICED_TRUE, MESH_VENDOR_CYPRSESS_OPCODE_CONFIG, buffer, (uint16_t)(p - buffer), rssi_test_master_send_complete_callback) != WICED_BT_SUCCESS)
+        WICED_TRUE, MESH_VENDOR_CYPRSESS_OPCODE_CONFIG, buffer, (uint16_t)(p - buffer), rssi_test_central_send_complete_callback) != WICED_BT_SUCCESS)
     {
         WICED_BT_TRACE("rssi test report rx: failed to send\n");
         return WICED_FALSE;
@@ -582,7 +582,7 @@ void mesh_vendor_rssi_test_process_rx_values_status(wiced_bt_mesh_event_t* p_eve
 
     wiced_bt_mesh_release_event(p_event);
 
-    rssi_test_master_execute(RSSI_TEST_MASTER_EVENT_RESULT);
+    rssi_test_central_execute(RSSI_TEST_CENTRAL_EVENT_RESULT);
 }
 
 /*
@@ -594,9 +594,9 @@ void rssi_test_timer_cb(TIMER_PARAM_TYPE arg)
     if (p_provisioner_state != NULL)
     {
         WICED_BT_TRACE("rssi test_timeout state:%d\n", p_provisioner_state->rssi_test.state);
-        if (p_provisioner_state->rssi_test.state != RSSI_TEST_MASTER_STATE_RUNNING)
+        if (p_provisioner_state->rssi_test.state != RSSI_TEST_CENTRAL_STATE_RUNNING)
         {
-            rssi_test_master_execute(RSSI_TEST_MASTER_EVENT_TIMEOUT);
+            rssi_test_central_execute(RSSI_TEST_CENTRAL_EVENT_TIMEOUT);
             return;
         }
     }
@@ -614,7 +614,7 @@ void rssi_test_timer_cb(TIMER_PARAM_TYPE arg)
 #endif
         return;
     }
-    rssi_test_master_execute(RSSI_TEST_MASTER_EVENT_TIMEOUT);
+    rssi_test_central_execute(RSSI_TEST_CENTRAL_EVENT_TIMEOUT);
 }
 
 /*
