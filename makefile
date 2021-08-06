@@ -39,6 +39,8 @@ endif
 # Basic Configuration
 #
 APPNAME=BLE_Mesh_EmbeddedProvisioner
+APP_VERSION_MAJOR = 1
+APP_VERSION_MINOR = 0
 TOOLCHAIN=GCC_ARM
 CONFIG=Debug
 VERBOSE=

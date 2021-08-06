@@ -119,6 +119,9 @@
 #if defined(MESH_DFU_SUPPORTED)
 #include "wiced_bt_mesh_dfu.h"
 #endif
+#ifdef DIRECTED_FORWARDING_SERVER_SUPPORTED
+#include "wiced_bt_mesh_mdf.h"
+#endif
 #include "mesh_application.h"
 #include "embedded_provisioner.h"
 #if defined(EMBEDDED_PROVISION)
@@ -436,9 +439,7 @@ void mesh_app_init(wiced_bool_t is_provisioned)
 #endif
 
 #if defined(MESH_DFU_SUPPORTED)
-    wiced_bt_mesh_model_fw_update_server_init();
     wiced_bt_mesh_model_fw_distribution_server_init();
-    wiced_bt_mesh_model_blob_transfer_server_init(WICED_BT_MESH_FW_TRANSFER_MODE_PUSH);
 #endif
 
 #if (defined(SELF_CONFIG) || defined(EMBEDDED_PROVISION))
@@ -1264,9 +1265,14 @@ void self_configure_next_op(TIMER_PARAM_TYPE arg)
                  ((p_model->model_id == WICED_BT_MESH_CORE_MODEL_ID_CONFIG_SRV) ||
                   (p_model->model_id == WICED_BT_MESH_CORE_MODEL_ID_CONFIG_CLNT) ||
                   (p_model->model_id == WICED_BT_MESH_CORE_MODEL_ID_REMOTE_PROVISION_SRV) ||
-                  (p_model->model_id == WICED_BT_MESH_CORE_MODEL_ID_REMOTE_PROVISION_CLNT) ||
-                  (p_model->model_id == WICED_BT_MESH_CORE_MODEL_ID_DIRECTED_FORWARDING_SRV) ||
-                  (p_model->model_id == WICED_BT_MESH_CORE_MODEL_ID_DIRECTED_FORWARDING_CLNT))))
+                  (p_model->model_id == WICED_BT_MESH_CORE_MODEL_ID_REMOTE_PROVISION_CLNT)
+#ifdef DIRECTED_FORWARDING_SERVER_SUPPORTED
+                  || (p_model->model_id == WICED_BT_MESH_CORE_MODEL_ID_DIRECTED_FORWARDING_SRV)
+                  || (p_model->model_id == WICED_BT_MESH_CORE_MODEL_ID_DIRECTED_FORWARDING_CLNT)
+                  || (p_model->model_id == WICED_BT_MESH_CORE_MODEL_ID_NETWORK_FILTER_SRV)
+                  || (p_model->model_id == WICED_BT_MESH_CORE_MODEL_ID_NETWORK_FILTER_CLNT)
+#endif
+                    )))
                 continue;
 
             configure_model_app_bind(node_addr, p_model, element_idx, EMBEDDED_PROV_APP_KEY_IDX);
