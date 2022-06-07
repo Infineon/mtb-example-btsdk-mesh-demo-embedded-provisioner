@@ -1,5 +1,5 @@
 #
-# Copyright 2016-2021, Cypress Semiconductor Corporation (an Infineon company) or
+# Copyright 2016-2022, Cypress Semiconductor Corporation (an Infineon company) or
 # an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
 #
 # This software, including source code, documentation and related
@@ -64,10 +64,16 @@ SUPPORTED_TARGETS = \
   CYBT-483062-EVAL \
   CYW920820EVB-02 \
   CYBT-213043-EVAL \
-  CYW920721B2EVK-02 \
   CYW920719B2Q40EVB-01 \
+  CYW920835M2EVB-01 \
+  CYBLE-333074-EVAL-M2B \
+  CYBLE-343072-EVAL-M2B \
+  CYBLE-343072-MESH \
+  CYW920721M2EVK-01 \
   CYW920721M2EVK-02 \
-  CYW920721M2EVB-03
+  CYW920721M2EVB-03 \
+  CYW920706WCDEVAL \
+  CYW920820M2EVB-01
 
 #
 # Advanced Configuration
@@ -96,12 +102,12 @@ TRANSPORT?=UART
 ENABLE_DEBUG?=0
 SELF_CONFIG?=1
 EMBEDDED_PROVISION?=1
+MESH_DFU?=0
 
 # wait for SWD attach
 ifeq ($(ENABLE_DEBUG),1)
 CY_APP_DEFINES+=-DENABLE_DEBUG=1
 endif
-MESH_DFU?=1
 
 CY_APP_DEFINES+=\
     -DWICED_BT_TRACE_ENABLE \
@@ -110,7 +116,10 @@ CY_APP_DEFINES+=\
     -DHCI_CONTROL
 
 ifeq ($(MESH_DFU),1)
-#CY_APP_DEFINES += -DMESH_DFU_SUPPORTED
+# Mesh DFU is not supported on 20706 due to memory limitation
+ifneq ($(TARGET),CYW920706WCDEVAL)
+CY_APP_DEFINES += -DMESH_DFU_SUPPORTED
+endif # !CYW920706WCDEVAL
 endif
 
 # value of the LOW_POWER_NODE defines mode. It can be normal node (0), or low power node (1)
@@ -140,8 +149,8 @@ endif
 
 # These flags control whether the prebuilt mesh libs (core, models, and provisioner)
 # will be the trace enabled versions or not
-MESH_MODELS_DEBUG_TRACES ?= 1
-MESH_CORE_DEBUG_TRACES ?= 1
+MESH_MODELS_DEBUG_TRACES ?= 0
+MESH_CORE_DEBUG_TRACES ?= 0
 MESH_PROVISIONER_DEBUG_TRACES ?= 0
 
 #
@@ -151,6 +160,12 @@ COMPONENTS +=bsp_design_modus
 COMPONENTS += mesh_app_lib
 ifeq ($(OTA_FW_UPGRADE),1)
 COMPONENTS += fw_upgrade_lib
+endif
+
+ifeq ($(TARGET),CYW920721M2EVK-01)
+CY_APP_DEFINES += -DAUDIO_SHIELD_REMOVED
+DISABLE_COMPONENTS += bsp_design_modus
+COMPONENTS += CYW920721M2EVK-01_design_modus
 endif
 
 # prebuilt libs - link release libs by default, or debug trace enabled if flag set
