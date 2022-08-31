@@ -73,7 +73,7 @@
  * single  embedded provisioner.
  *
  * The app is based on the snip/mesh/mesh_light_lightness sample which
- * implements BLE Mesh Light Lightness Server model. Because Light Lightness
+ * implements LE Mesh Light Lightness Server model. Because Light Lightness
  * Server model extends Generic OnOff and Generic Level, the dimmable
  * light can be controlled by a Switch (Generic OnOff Client), a Dimmer
  * (Generic Level Client), or by an application which implements Light
@@ -142,7 +142,6 @@ uint8_t app_key[16];
  ******************************************************/
 #define MESH_PID                0x321F
 #define MESH_VID                0x0002
-#define MESH_CACHE_REPLAY_SIZE  0x0008
 
 /******************************************************
  *          Structures
@@ -156,7 +155,7 @@ static uint32_t mesh_app_proc_rx_cmd(uint16_t opcode, uint8_t* p_data, uint32_t 
 static void mesh_app_factory_reset(void);
 static void mesh_app_attention(uint8_t element_idx, uint8_t time);
 static void mesh_app_message_handler(uint8_t element_idx, uint16_t event, void *p_data);
-static void mesh_app_process_set_level(uint8_t element_idx, wiced_bt_mesh_light_lightness_status_t *p_data);
+static void mesh_app_process_level_status(uint8_t element_idx, wiced_bt_mesh_light_lightness_status_t *p_data);
 #if (defined(SELF_CONFIG) || defined(EMBEDDED_PROVISION))
 wiced_bool_t mesh_vendor_server_message_handler(wiced_bt_mesh_event_t *p_event, uint8_t *p_data, uint16_t data_len);
 static void self_configure(uint16_t node_addr);
@@ -223,7 +222,6 @@ wiced_bt_mesh_core_config_t  mesh_config =
     .company_id         = MESH_COMPANY_ID_CYPRESS,                  // Company identifier assigned by the Bluetooth SIG
     .product_id         = MESH_PID,                                 // Vendor-assigned product identifier
     .vendor_id          = MESH_VID,                                 // Vendor-assigned product version identifier
-    .replay_cache_size  = MESH_CACHE_REPLAY_SIZE,                   // Number of replay protection entries, i.e. maximum number of mesh devices that can send application messages to this device.
     .features           = WICED_BT_MESH_CORE_FEATURE_BIT_RELAY,     // No friend no proxy for this app
     .friend_cfg         =                                           // Configuration of the Friend Feature(Receive Window in Ms, messages cache)
     {
@@ -560,8 +558,8 @@ void mesh_app_message_handler(uint8_t element_idx, uint16_t event, void *p_data)
 {
     switch (event)
     {
-    case WICED_BT_MESH_LIGHT_LIGHTNESS_SET:
-        mesh_app_process_set_level(element_idx, (wiced_bt_mesh_light_lightness_status_t *)p_data);
+    case WICED_BT_MESH_LIGHT_LIGHTNESS_STATUS:
+        mesh_app_process_level_status(element_idx, (wiced_bt_mesh_light_lightness_status_t *)p_data);
         break;
 
     default:
@@ -573,7 +571,7 @@ void mesh_app_message_handler(uint8_t element_idx, uint16_t event, void *p_data)
 /*
  * Command from the level client is received to set the new level
  */
-void mesh_app_process_set_level(uint8_t element_idx, wiced_bt_mesh_light_lightness_status_t *p_status)
+void mesh_app_process_level_status(uint8_t element_idx, wiced_bt_mesh_light_lightness_status_t *p_status)
 {
     WICED_BT_TRACE("mesh light srv set level element:%d present actual:%d linear:%d remaining_time:%d\n",
         element_idx, p_status->lightness_actual_present, p_status->lightness_linear_present, p_status->remaining_time);
@@ -1594,7 +1592,7 @@ wiced_bt_mesh_event_t* mesh_configure_create_event(uint16_t dst, wiced_bool_t re
 #endif
 
 #if (defined(SELF_CONFIG) && defined(EMBEDDED_PROVISION))
-#if !defined(CYW43012C0) && !defined(CYW20706A2) && !defined(CYW20719B0)
+#if !defined(CYW43012C0) && !defined(CYW20706A2)
 extern wiced_platform_button_config_t platform_button[];
 #endif
 
@@ -1604,9 +1602,6 @@ void button_hardware_init(void)
 #if defined(CYW20706A2)
     wiced_hal_gpio_configure_pin(WICED_GPIO_BUTTON, WICED_GPIO_BUTTON_SETTINGS(GPIO_EN_INT_BOTH_EDGE), WICED_GPIO_BUTTON_DEFAULT_STATE);
     wiced_hal_gpio_register_pin_for_interrupt(WICED_GPIO_BUTTON, button_interrupt_handler, NULL);
-#elif (defined(CYW20735B0) || defined(CYW20719B0) || defined(CYW20721B0))
-    wiced_hal_gpio_register_pin_for_interrupt(WICED_GPIO_PIN_BUTTON, button_interrupt_handler, NULL);
-    wiced_hal_gpio_configure_pin(WICED_GPIO_PIN_BUTTON, WICED_GPIO_BUTTON_SETTINGS, GPIO_PIN_OUTPUT_LOW);
 #else
     wiced_platform_register_button_callback(WICED_PLATFORM_BUTTON_1, button_interrupt_handler, NULL, GPIO_EN_INT_BOTH_EDGE);
 #endif
@@ -1628,7 +1623,7 @@ void button_interrupt_handler(void* user_data, uint8_t pin)
     WICED_BT_TRACE("interrupt_handler: pin:%d value:%d time:%d\n", pin, value, curr_time);
 
     // On push just remember current time.
-#if !defined(CYW43012C0) && !defined(CYW20706A2) && !defined(CYW20719B0)
+#if !defined(CYW43012C0) && !defined(CYW20706A2)
     if (value == platform_button[WICED_PLATFORM_BUTTON_1].button_pressed_value)
 #else
     if (value == 0)
