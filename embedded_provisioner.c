@@ -1,5 +1,5 @@
 /*
-* Copyright 2016-2022, Cypress Semiconductor Corporation (an Infineon company) or
+* Copyright 2016-2023, Cypress Semiconductor Corporation (an Infineon company) or
 * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
 *
 * This software, including source code, documentation and related
@@ -1332,6 +1332,7 @@ void self_configure_next_op(TIMER_PARAM_TYPE arg)
         for (i = 0; i < 100; i++)
             utilslib_delayUs(1000);
 
+        wiced_bt_mesh_core_execute_delayed_nvram_writes();
         wiced_hal_wdog_reset_system();
     }
 }

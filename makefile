@@ -1,5 +1,5 @@
 #
-# Copyright 2016-2022, Cypress Semiconductor Corporation (an Infineon company) or
+# Copyright 2016-2023, Cypress Semiconductor Corporation (an Infineon company) or
 # an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
 #
 # This software, including source code, documentation and related
@@ -50,6 +50,7 @@ TARGET=CYBT-213043-MESH
 
 SUPPORTED_TARGETS = \
   CYW920819EVB-02 \
+  CYW920819M2EVB-01 \
   CYBT-213043-MESH \
   CYBT-243053-EVAL \
   CYBT-253059-EVAL \
@@ -72,7 +73,6 @@ SUPPORTED_TARGETS = \
   CYW920721M2EVK-01 \
   CYW920721M2EVK-02 \
   CYW920721M2EVB-03 \
-  CYW920706WCDEVAL \
   CYW920820M2EVB-01
 
 #
@@ -165,7 +165,7 @@ endif
 ifeq ($(TARGET),CYW920721M2EVK-01)
 CY_APP_DEFINES += -DAUDIO_SHIELD_REMOVED
 DISABLE_COMPONENTS += bsp_design_modus
-COMPONENTS += CYW920721M2EVK-01_design_modus
+COMPONENTS += CYW920721M2EVK_01_design_modus
 endif
 
 # prebuilt libs - link release libs by default, or debug trace enabled if flag set
@@ -189,7 +189,16 @@ endif
 CY_20706A2_APP_PATCH_LIBS += rtc_lib.a
 CY_20706A2_APP_PATCH_LIBS += wiced_bt_mesh.a
 
-# CY_APP_PATCH_LIBS += mesh_optimized_continuous_scan_lib.a
+CY_20719B2_APP_PATCH_LIBS += mesh_optimized_continuous_scan_lib.a
+
+CY_20819A1_APP_PATCH_LIBS += mesh_optimized_continuous_scan_lib.a
+
+CY_20820A1_APP_PATCH_LIBS += mesh_optimized_continuous_scan_lib.a
+
+CY_20835B1_APP_PATCH_LIBS += mesh_optimized_continuous_scan_lib.a
+CY_20835B1_APP_PATCH_LIBS += wiced_bt_ble_lib.a
+
+CY_43012C0_APP_PATCH_LIBS += mesh_optimized_continuous_scan_lib.a
 
 ################################################################################
 # Paths
